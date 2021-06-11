@@ -98,7 +98,7 @@ public class EventControllerTests {
 
   @Test
   @TestDescription("입력 값이 잘못된 경우에 에러가 발생하는 테스트")
-  void createEvent_badRequest_wrong_input() throws Exception{
+  void createEvent_badRequest_wrong_input() throws Exception {
     EventDto eventDto = EventDto.builder()
         .name("Spring")
         .description("Rest Api Development with Spring")
@@ -116,6 +116,8 @@ public class EventControllerTests {
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(eventDto)))
         .andExpect(status().isBadRequest())
-    ;
+        .andExpect(jsonPath("$[0].objectName").exists())
+        .andExpect(jsonPath("$[0].defaultMessage").exists())
+        .andExpect(jsonPath("$[0].code").exists());
   }
 }
