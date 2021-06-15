@@ -12,14 +12,17 @@ import org.springframework.context.annotation.Import;
 import org.springframework.hateoas.MediaTypes;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
+import java.util.stream.IntStream;
 
 import static org.springframework.restdocs.headers.HeaderDocumentation.*;
 import static org.springframework.restdocs.hypermedia.HypermediaDocumentation.*;
 import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document;
 import static org.springframework.restdocs.payload.PayloadDocumentation.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -28,6 +31,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @AutoConfigureRestDocs
 @Import(RestDocsConfiguration.class)
+@ActiveProfiles("test")
 public class EventControllerTests {
 
   @Autowired
@@ -35,6 +39,9 @@ public class EventControllerTests {
 
   @Autowired
   ObjectMapper objectMapper;
+
+  @Autowired
+  EventRepository eventRepository;
 
   @Test
   @TestDescription("정상적으로 이벤트를 생성하는 메소드")
@@ -65,15 +72,13 @@ public class EventControllerTests {
         .andExpect(jsonPath("free").value(false))
         .andExpect(jsonPath("offline").value(true))
         .andExpect(jsonPath("eventStatus").value("DRAFT"))
-        .andExpect(jsonPath("_links.self").exists())
-        .andExpect(jsonPath("_links.query-events").exists())
-        .andExpect(jsonPath("_links.update-event").exists())
         .andDo(document("create-event",
             links(
                 halLinks(),
                 linkWithRel("self").description("link to self"),
                 linkWithRel("query-events").description("link to query event"),
-                linkWithRel("update-event").description("link to update event")
+                linkWithRel("update-event").description("link to update event"),
+                linkWithRel("profile").description("link to profile")
             ),
             requestHeaders(
                 headerWithName(HttpHeaders.ACCEPT).description("accept header"),
@@ -112,7 +117,8 @@ public class EventControllerTests {
                 fieldWithPath("eventStatus").description("event status"),
                 fieldWithPath("_links.self.href").description("link to another state"),
                 fieldWithPath("_links.query-events.href").description("link to another state"),
-                fieldWithPath("_links.update-event.href").description("link to another state")
+                fieldWithPath("_links.update-event.href").description("link to another state"),
+                fieldWithPath("_links.profile.href").description("link to profile")
             )
         ))
     ;
@@ -176,8 +182,35 @@ public class EventControllerTests {
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(eventDto)))
         .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$[0].objectName").exists())
-        .andExpect(jsonPath("$[0].defaultMessage").exists())
-        .andExpect(jsonPath("$[0].code").exists());
+        .andExpect(jsonPath("errors[0].objectName").exists())
+        .andExpect(jsonPath("errors[0].defaultMessage").exists())
+        .andExpect(jsonPath("errors[0].code").exists())
+        .andExpect(jsonPath("_links.index").exists());
+  }
+
+  @Test
+  @TestDescription("30개의 이벤트를 10개씩 두번째 페이지 조회하기")
+  void queryEvents() throws Exception {
+    //Given
+    IntStream.range(0, 30).forEach(this::generateEvent);
+
+    mockMvc.perform(get("/api/events")
+        .param("page", "1")
+        .param("size", "10")
+        .param("sort", "name,DESC")
+    )
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("page").exists())
+        .andDo(print())
+    ;
+  }
+
+  private void generateEvent(int index) {
+    Event event = Event.builder()
+        .name("event" + index)
+        .description("testEvent")
+        .build();
+
+    this.eventRepository.save(event);
   }
 }
