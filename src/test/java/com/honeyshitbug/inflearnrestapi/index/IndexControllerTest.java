@@ -1,6 +1,5 @@
 package com.honeyshitbug.inflearnrestapi.index;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.honeyshitbug.inflearnrestapi.common.RestDocsConfiguration;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,13 +19,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureRestDocs
 @Import(RestDocsConfiguration.class)
 @ActiveProfiles("test")
-public class IndexControllerTest {
+class IndexControllerTest {
 
   @Autowired
   MockMvc mockMvc;
 
   @Test
-  void index() throws Exception{
+  void index() throws Exception {
     this.mockMvc.perform(get("/api/"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("_links.events").exists());

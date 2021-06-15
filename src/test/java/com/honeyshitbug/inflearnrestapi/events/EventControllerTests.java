@@ -32,7 +32,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureRestDocs
 @Import(RestDocsConfiguration.class)
 @ActiveProfiles("test")
-public class EventControllerTests {
+class EventControllerTests {
 
   @Autowired
   MockMvc mockMvc;
@@ -197,12 +197,14 @@ public class EventControllerTests {
     mockMvc.perform(get("/api/events")
         .param("page", "1")
         .param("size", "10")
-        .param("sort", "name,DESC")
-    )
+        .param("sort", "name,DESC"))
+        .andDo(print())
         .andExpect(status().isOk())
         .andExpect(jsonPath("page").exists())
-        .andDo(print())
-    ;
+        .andExpect(jsonPath("_embedded.eventList[0]._links.self").exists())
+        .andExpect(jsonPath("_links.self").exists())
+        .andExpect(jsonPath("_links.profile").exists())
+        .andDo(document("query-events"));
   }
 
   private void generateEvent(int index) {

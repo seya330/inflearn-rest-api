@@ -3,13 +3,18 @@ package com.honeyshitbug.inflearnrestapi.events;
 import com.honeyshitbug.inflearnrestapi.index.IndexController;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PagedResourcesAssembler;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.Link;
 import org.springframework.hateoas.MediaTypes;
+import org.springframework.hateoas.PagedModel;
 import org.springframework.hateoas.server.mvc.WebMvcLinkBuilder;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.Errors;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -58,6 +63,18 @@ public class EventController {
     return ResponseEntity
         .created(selfLinkBuilder.toUri())
         .body(eventResource);
+  }
+
+  @GetMapping
+  public ResponseEntity queryEvents(Pageable pageable, PagedResourcesAssembler assembler) {
+    Page<Event> page = this.eventRepository.findAll(pageable);
+    PagedModel<Event> pagedResource = assembler.toModel(page, e -> {
+      EntityModel<Event> entityModel = EntityModel.of((Event)e);
+      entityModel.add(linkTo(EventController.class).slash(((Event) e).getId()).withSelfRel());
+      return entityModel;
+    });
+    pagedResource.add(Link.of("/docs/index.html#resources-events-list").withRel("profile"));
+    return ResponseEntity.ok(pagedResource);
   }
 
   private EntityModel<Errors> getErrorsEntityModel(Errors errors) {
