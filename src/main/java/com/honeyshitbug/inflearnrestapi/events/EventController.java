@@ -14,12 +14,11 @@ import org.springframework.hateoas.server.mvc.WebMvcLinkBuilder;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.Errors;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
+
+import java.util.Optional;
 
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
@@ -69,12 +68,31 @@ public class EventController {
   public ResponseEntity queryEvents(Pageable pageable, PagedResourcesAssembler assembler) {
     Page<Event> page = this.eventRepository.findAll(pageable);
     PagedModel<Event> pagedResource = assembler.toModel(page, e -> {
-      EntityModel<Event> entityModel = EntityModel.of((Event)e);
+      EntityModel<Event> entityModel = EntityModel.of((Event) e);
       entityModel.add(linkTo(EventController.class).slash(((Event) e).getId()).withSelfRel());
       return entityModel;
     });
     pagedResource.add(Link.of("/docs/index.html#resources-events-list").withRel("profile"));
     return ResponseEntity.ok(pagedResource);
+  }
+
+  @GetMapping("/{id}")
+  public ResponseEntity getEvent(@PathVariable Integer id) {
+    Optional<Event> optionalEvent = this.eventRepository.findById(id);
+    if (optionalEvent.isEmpty()) {
+      return ResponseEntity.notFound().build();
+    }
+
+    Event event = optionalEvent.get();
+    EntityModel<Event> eventResource = getEventModel(event);
+    eventResource.add(Link.of("/docs/index.html#resources-events-get").withRel("profile"));
+    return ResponseEntity.ok(eventResource);
+  }
+
+  private EntityModel<Event> getEventModel(Event event) {
+    EntityModel<Event> model = EntityModel.of(event);
+    model.add(linkTo(EventController.class).slash((event.getId())).withSelfRel());
+    return model;
   }
 
   private EntityModel<Errors> getErrorsEntityModel(Errors errors) {
