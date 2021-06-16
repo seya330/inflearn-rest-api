@@ -37,13 +37,11 @@ public class EventController {
   @PostMapping
   public ResponseEntity createEvent(@RequestBody @Valid EventDto eventDto, Errors errors) {
     if (errors.hasErrors()) {
-      EntityModel<Errors> errorResource = getErrorsEntityModel(errors);
-      return ResponseEntity.badRequest().body(errorResource);
+      return badRequest(errors);
     }
     eventValidator.validate(eventDto, errors);
     if (errors.hasErrors()) {
-      EntityModel<Errors> errorResource = getErrorsEntityModel(errors);
-      return ResponseEntity.badRequest().body(errorResource);
+      return badRequest(errors);
     }
 
     Event event = modelMapper.map(eventDto, Event.class);
@@ -62,6 +60,11 @@ public class EventController {
     return ResponseEntity
         .created(selfLinkBuilder.toUri())
         .body(eventResource);
+  }
+
+  private ResponseEntity badRequest(Errors errors) {
+    EntityModel<Errors> errorResource = getErrorsEntityModel(errors);
+    return ResponseEntity.badRequest().body(errorResource);
   }
 
   @GetMapping
@@ -86,6 +89,32 @@ public class EventController {
     Event event = optionalEvent.get();
     EntityModel<Event> eventResource = getEventModel(event);
     eventResource.add(Link.of("/docs/index.html#resources-events-get").withRel("profile"));
+    return ResponseEntity.ok(eventResource);
+  }
+
+  @PutMapping("/{id}")
+  public ResponseEntity updateEvent(
+      @PathVariable Integer id,
+      @RequestBody @Valid EventDto eventDto,
+      Errors errors) {
+    Optional<Event> optionalEvent = this.eventRepository.findById(id);
+    if (optionalEvent.isEmpty()) {
+      return ResponseEntity.notFound().build();
+    }
+
+    if (errors.hasErrors()) {
+      return badRequest(errors);
+    }
+    this.eventValidator.validate(eventDto, errors);
+    if (errors.hasErrors()) {
+      return badRequest(errors);
+    }
+
+    Event existingEvent = optionalEvent.get();
+    modelMapper.map(eventDto, existingEvent);
+    Event event = eventRepository.save(existingEvent);
+    EntityModel<Event> eventResource = getEventModel(event);
+    eventResource.add(Link.of("/docs/index.html#resources-events-update").withRel("profile"));
     return ResponseEntity.ok(eventResource);
   }
 
